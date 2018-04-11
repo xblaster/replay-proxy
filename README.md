@@ -9,5 +9,5 @@ a simple recorder replay proxy
      -t, --target [value]    targeted proxy site (optional in replay mode)
      -m, --mode [value]      Recorder/replay mode
      -s, --storage [value]   directory of data_dir
-     -h, --help     output usage information
+     -h, --help              output usage information
 
