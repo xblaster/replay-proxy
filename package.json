@@ -9,6 +9,7 @@
   "author": "Jérôme WAX",
   "license": "ISC",
   "dependencies": {
+    "commander": "^2.15.1",
     "http-proxy": "^1.16.2",
     "json-decycle": "^1.0.0"
   }
