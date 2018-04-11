@@ -17,7 +17,7 @@ program
   .parse(process.argv);
 
 if (!program.mode) {
-    console.log("please precise a mode. ")
+    console.log("please precise a mode. [replay|record]")
     console.log("you can type 'replay-proxy -h' for help")
     process.exit(0)
 }
@@ -26,6 +26,11 @@ if (!program.mode) {
 if (program.storage) {
     data_dir = program.storage;
 }
+
+if (!program.target) {
+    program.target ='http://zmwd001.curia.europa.eu:7780/CuriaWsJudiciaire2/';
+}
+
 //Create data directory if not exist
 if (!fs.existsSync(data_dir)){
     fs.mkdirSync(data_dir);
@@ -41,7 +46,7 @@ let proxy = httpProxy.createProxyServer();
 function mkdirp(filepath) {
     var dirname = path.dirname(filepath);
 
-    console.log(("mkdir on "+dirname))
+    //console.log(("mkdir on "+dirname))
     if (!fs.existsSync(dirname)) {
         mkdirp(dirname);
     }
@@ -63,10 +68,10 @@ function getFilenameForUrl(urlParam) {
     return filepath
 }
 
-function log(req, res, body) {
+function log(req, res, content, suffix) {
     let { headers, method, urls } = req;
     //res.then((data) => { data = result} );
-    console.log("[RECORD] req.url");
+    
     
     
 
@@ -76,7 +81,7 @@ function log(req, res, body) {
     if (!(urlVar==="ROOT")) {
         mkdirp(filepath);
     }
-    return fs.writeFile(filepath, body);
+    return fs.writeFileSync(filepath+"-"+suffix, content);
 }
 
 
@@ -100,11 +105,15 @@ proxy.on('proxyReq', function (proxyRes, req, res) {
 
         var body = Buffer.concat(chunks).toString('utf8');
         //console.log(req.path, body);
-
-        log(req, res, body);
+        console.log("[RECORD] "+req.url);
+        log(req, res, body, "body");
 
         oldEnd.apply(res, arguments);
     };
+});
+
+proxy.on('proxyRes', function (proxyRes, req, res) {
+    log(req, res, JSON.stringify(proxyRes.headers, true, 2), "headers");
 });
 
 console.log(program.mode)
@@ -115,8 +124,17 @@ if (program.mode == "replay") {
         const { headers, method, url } = req;
         filepath = getFilenameForUrl(req.url);
 
-        if (fs.existsSync(filepath)) {
-            fs.readFile(filepath, (err, data) => {
+        if (fs.existsSync(filepath+"-body")) {
+            fs.readFile(filepath+"-body", (err, data) => {
+
+                try {
+                    var headers = JSON.parse(fs.readFileSync(filepath+"-headers"));
+                    res.writeHead(200, headers);
+                }
+                catch (error) {
+                    // nevermind... 
+                }
+                
                 console.log("[REPLAY] "+req.url);
                 res.write(data);
                 res.end();
@@ -132,7 +150,7 @@ if (program.mode == "replay") {
     console.log(">> LAUNCHING RECORDER MODE FOR "+program.target)
     http.createServer(function (req, res) {
           proxy.web(req, res, {
-            target: 'http://zmwd001.curia.europa.eu:7780/CuriaWsJudiciaire2/'
+            target: program.target
           });
       }).listen(2525);
 }
