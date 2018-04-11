@@ -11,9 +11,9 @@ var program = require('commander');
 
 program
   .version('0.8.0')
-  .option('-t, --target', 'targeted proxy site (optional in replay mode)')
-  .option('-m, --mode', 'Recorder/replay mode')
-  .option('-s, --storage', 'directory of data_dir')
+  .option('-t, --target [value]', 'targeted proxy site (optional in replay mode)')
+  .option('-m, --mode [value]', 'Recorder/replay mode')
+  .option('-s, --storage [value]', 'directory of data_dir')
   .parse(process.argv);
 
 if (!program.mode) {
@@ -49,23 +49,29 @@ function mkdirp(filepath) {
     //fs.mkdirSync(filepath);
 }
 
-function log(req, res, body) {
-    let { headers, method, urls } = req;
-    //res.then((data) => { data = result} );
-    console.log(req.url);
-    let urlVar;
-    if (!req.url || req.url === "." || res.url === "/") {
+function getFilenameForUrl(urlParam) {
+    if (!urlParam || urlParam === "." || urlParam === "/") {
         urlVar =  "ROOT";
     } else {
-        urlVar = req.url;
+        urlVar = urlParam;
     }
-
-    //define filepath
     var parsedUrl = url.parse(urlVar)
     filepath = data_dir+"/"+parsedUrl.pathname;
     if (parsedUrl.query) {
         filepath = filepath + escape("?"+parsedUrl.query)
     }
+    return filepath
+}
+
+function log(req, res, body) {
+    let { headers, method, urls } = req;
+    //res.then((data) => { data = result} );
+    console.log("[RECORD] req.url");
+    
+    
+
+    //define filepath
+    filepath = getFilenameForUrl(req.url);
 
     if (!(urlVar==="ROOT")) {
         mkdirp(filepath);
@@ -101,18 +107,35 @@ proxy.on('proxyReq', function (proxyRes, req, res) {
     };
 });
 
+console.log(program.mode)
 
+if (program.mode == "replay") {
+    console.log(">> LAUNCHING REPLAY MODE FOR "+program.target)
+    http.createServer(function (req, res) {
+        const { headers, method, url } = req;
+        filepath = getFilenameForUrl(req.url);
 
-
-http.createServer(function (req, res) {
-    // This simulates an operation that takes 500ms to execute
-      
-      proxy.web(req, res, {
-        target: 'http://zmwd001.curia.europa.eu:7780/CuriaWsJudiciaire2/'
-      });
-    
-  }).listen(2525);
-
+        if (fs.existsSync(filepath)) {
+            fs.readFile(filepath, (err, data) => {
+                console.log("[REPLAY] "+req.url);
+                res.write(data);
+                res.end();
+            });
+        } else {
+            console.log("[MISS] "+req.url);
+            res.write("not recorded");
+            res.end();
+        }
+      }).listen(2525);
+} else {
+    //launch recorder proxy
+    console.log(">> LAUNCHING RECORDER MODE FOR "+program.target)
+    http.createServer(function (req, res) {
+          proxy.web(req, res, {
+            target: 'http://zmwd001.curia.europa.eu:7780/CuriaWsJudiciaire2/'
+          });
+      }).listen(2525);
+}
 
 
 
