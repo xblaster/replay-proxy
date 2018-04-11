@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const url  = require('url');
 
-const data_dir = './data_dir';
+let data_dir = './data_dir';
 
 
 var program = require('commander');
@@ -14,6 +14,7 @@ program
   .option('-t, --target [value]', 'targeted proxy site (optional in replay mode)')
   .option('-m, --mode [value]', 'Recorder/replay mode')
   .option('-s, --storage [value]', 'directory of data_dir')
+  .option('-p, --port [value]', 'listening port', parseInt)
   .parse(process.argv);
 
 if (!program.mode) {
@@ -27,8 +28,13 @@ if (program.storage) {
     data_dir = program.storage;
 }
 
+if (!program.port) {
+    program.port = 2525
+}
+
 if (!program.target) {
-    program.target ='http://zmwd001.curia.europa.eu:7780/CuriaWsJudiciaire2/';
+    //program.target ='http://zmwd001.curia.europa.eu:7780/CuriaWsJudiciaire2/';
+    program.target ='http://cjlesbtest:8005/';
 }
 
 //Create data directory if not exist
@@ -48,10 +54,19 @@ function mkdirp(filepath) {
 
     //console.log(("mkdir on "+dirname))
     if (!fs.existsSync(dirname)) {
+        
         mkdirp(dirname);
     }
 
-    //fs.mkdirSync(filepath);
+    try {
+        fs.mkdirSync(dirname);
+    }
+    catch (error ) {
+
+    }
+        
+
+    
 }
 
 function getFilenameForUrl(urlParam) {
@@ -116,7 +131,7 @@ proxy.on('proxyRes', function (proxyRes, req, res) {
     log(req, res, JSON.stringify(proxyRes.headers, true, 2), "headers");
 });
 
-console.log(program.mode)
+console.log(">>> LAUNCHING PROXY ON PORT "+program.port)
 
 if (program.mode == "replay") {
     console.log(">> LAUNCHING REPLAY MODE FOR "+program.target)
@@ -144,7 +159,7 @@ if (program.mode == "replay") {
             res.write("not recorded");
             res.end();
         }
-      }).listen(2525);
+      }).listen(program.port);
 } else {
     //launch recorder proxy
     console.log(">> LAUNCHING RECORDER MODE FOR "+program.target)
@@ -152,7 +167,7 @@ if (program.mode == "replay") {
           proxy.web(req, res, {
             target: program.target
           });
-      }).listen(2525);
+      }).listen(program.port);
 }
 
 
