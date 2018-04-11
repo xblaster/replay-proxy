@@ -5,9 +5,9 @@ a simple recorder replay proxy
   
     Options:
     
-     -V, --version  output the version number
-     -t, --target   targeted proxy site (optional in replay mode)
-     -m, --mode     Recorder/replay mode
-     -s, --storage  directory of data_dir
-     -h, --help     output usage information
+     -V, --version           output the version number
+     -t, --target [value]    targeted proxy site (optional in replay mode)
+     -m, --mode [value]      Recorder/replay mode
+     -s, --storage [value]   directory of data_dir
+     -h, --help              output usage information
 
