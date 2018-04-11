@@ -34,7 +34,7 @@ if (!program.port) {
 
 if (!program.target) {
     //program.target ='http://zmwd001.curia.europa.eu:7780/CuriaWsJudiciaire2/';
-    program.target ='http://cjlesbtest:8005/';
+    //program.target ='http://cjlesbtest:8005/';
 }
 
 //Create data directory if not exist
@@ -69,7 +69,8 @@ function mkdirp(filepath) {
     
 }
 
-function getFilenameForUrl(urlParam) {
+function getFilenameForUrl(req) {
+    urlParam = req.url
     if (!urlParam || urlParam === "." || urlParam === "/") {
         urlVar =  "ROOT";
     } else {
@@ -80,6 +81,12 @@ function getFilenameForUrl(urlParam) {
     if (parsedUrl.query) {
         filepath = filepath + escape("?"+parsedUrl.query)
     }
+
+    if (req.headers.accept.indexOf("json")!=-1) {
+        filepath = filepath + "-json"
+    } else if (req.headers.accept.indexOf("xml")!=-1) {
+        filepath = filepath + "-xml"
+    }
     return filepath
 }
 
@@ -89,9 +96,9 @@ function log(req, res, content, suffix) {
     
     
     
-
     //define filepath
-    filepath = getFilenameForUrl(req.url);
+    
+    filepath = getFilenameForUrl(req);
 
     if (!(urlVar==="ROOT")) {
         mkdirp(filepath);
@@ -137,7 +144,7 @@ if (program.mode == "replay") {
     console.log(">> LAUNCHING REPLAY MODE FOR "+program.target)
     http.createServer(function (req, res) {
         const { headers, method, url } = req;
-        filepath = getFilenameForUrl(req.url);
+        filepath = getFilenameForUrl(req);
 
         if (fs.existsSync(filepath+"-body")) {
             fs.readFile(filepath+"-body", (err, data) => {
