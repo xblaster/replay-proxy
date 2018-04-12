@@ -3,16 +3,20 @@ const httpProxy = require('http-proxy');
 const fs = require('fs');
 const path = require('path');
 const url  = require('url');
+const Replay  = require('replay');
 
 let data_dir = './data_dir';
 
+
+//Replay.passThrough('localhost');
+//Replay.passThrough('127.0.0.1');
 
 var program = require('commander');
 
 program
   .version('0.8.0')
   .option('-t, --target [value]', 'targeted proxy site (optional in replay mode)')
-  .option('-m, --mode [value]', 'Recorder/replay mode')
+  .option('-m, --mode [bloody|cheat|record|replay]', 'Recorder/replay mode')
   .option('-s, --storage [value]', 'directory of data_dir')
   .option('-p, --port [value]', 'listening port', parseInt)
   .parse(process.argv);
@@ -21,7 +25,12 @@ if (!program.mode) {
     console.log("please precise a mode. [replay|record]")
     console.log("you can type 'replay-proxy -h' for help")
     process.exit(0)
+
+    
 }
+
+
+Replay.mode = program.mode;
 
 //override default storage if defined
 if (program.storage) {
@@ -106,76 +115,14 @@ function log(req, res, content, suffix) {
     return fs.writeFileSync(filepath+"-"+suffix, content);
 }
 
-
-// intercept writer and store stream of result asynchonously for logging 
-proxy.on('proxyReq', function (proxyRes, req, res) {
-    const { headers, method, url } = req;
-    var oldWrite = res.write,
-          oldEnd = res.end;
-
-    var chunks = [];
-
-    res.write = function (chunk) {
-    chunks.push(chunk);
-
-    oldWrite.apply(res, arguments);
-    };
-
-    res.end = function (chunk) {
-        if (chunk)
-            chunks.push(chunk);
-
-        var body = Buffer.concat(chunks).toString('utf8');
-        //console.log(req.path, body);
-        console.log("[RECORD] "+req.url);
-        log(req, res, body, "body");
-
-        oldEnd.apply(res, arguments);
-    };
-});
-
-proxy.on('proxyRes', function (proxyRes, req, res) {
-    log(req, res, JSON.stringify(proxyRes.headers, true, 2), "headers");
-});
-
 console.log(">>> LAUNCHING PROXY ON PORT "+program.port)
 
-if (program.mode == "replay") {
-    console.log(">> LAUNCHING REPLAY MODE FOR "+program.target)
-    http.createServer(function (req, res) {
-        const { headers, method, url } = req;
-        filepath = getFilenameForUrl(req);
 
-        if (fs.existsSync(filepath+"-body")) {
-            fs.readFile(filepath+"-body", (err, data) => {
 
-                try {
-                    var headers = JSON.parse(fs.readFileSync(filepath+"-headers"));
-                    res.writeHead(200, headers);
-                }
-                catch (error) {
-                    // nevermind... 
-                }
-                
-                console.log("[REPLAY] "+req.url);
-                res.write(data);
-                res.end();
-            });
-        } else {
-            console.log("[MISS] "+req.url);
-            res.write("not recorded");
-            res.end();
-        }
-      }).listen(program.port);
-} else {
-    //launch recorder proxy
-    console.log(">> LAUNCHING RECORDER MODE FOR "+program.target)
-    http.createServer(function (req, res) {
-          proxy.web(req, res, {
-            target: program.target
-          });
-      }).listen(program.port);
-}
-
+http.createServer(function (req, res) {
+    proxy.web(req, res, {
+      target: program.target
+    });
+}).listen(program.port);
 
 
